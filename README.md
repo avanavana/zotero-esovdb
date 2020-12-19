@@ -7,6 +7,8 @@ Visit the [The Earth Science Online Video Database](https://airtable.com/shrFBKQ
 To install as CLI:
 `$ npm install -g zotero-esovdb`
 
+Be sure to create a .env file that contains your ZOTERO_USER and ZOTERO_API_KEY values, obtainable through the settings page of your Zotero account.
+
 Usage:
 
 ```
@@ -23,3 +25,6 @@ Options:
   -s, --silent                run without any logging
   -h, --help                  display help for command
 ```
+
+MIT License
+Copyright (c) 2020 Avana Vana
