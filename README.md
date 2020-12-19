@@ -4,6 +4,8 @@ Gets a specified number of records from the ESOVDB (Earth Science Online Video D
 
 Visit the [The Earth Science Online Video Database](https://airtable.com/shrFBKQwGjstk7TVn)
 
+Client-side of [avanavana/airtable-api-proxy](https://github.com/avanavana/airtable-api-proxy).
+
 To install as CLI:
 `$ npm install -g zotero-esovdb`
 
