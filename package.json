@@ -2,13 +2,15 @@
   "name": "zotero-esovdb",
   "version": "1.0.0",
   "description": "Adds ESOVDB items to Zotero via API proxy cache.",
+  "homepage": "https://airtable.com/shrFBKQwGjstk7TVn",
+  "author": "Avana Vana <dear.avana@gmail.com> (http://www.avanavana.com)",
   "main": "index.js",
   "scripts": {
     "start": "node ./bin/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Avana Vana",
-  "license": "ISC",
+  "license": "MIT",
   "dependencies": {
     "airtable": "^0.10.1",
     "axios": "^0.21.0",
@@ -18,5 +20,20 @@
   },
   "bin": {
     "zotvid": "./bin/index.js"
-  }
+  },
+  "keywords": [
+    "node",
+    "airtable",
+    "zotero",
+    "zotero-api",
+    "cache",
+    "cache proxy",
+    "proxy",
+    "proxy server",
+    "earth science",
+    "earth sciences",
+    "earth science online video database",
+    "esovdb",
+    "geology"
+  ]
 }
