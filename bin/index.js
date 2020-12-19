@@ -173,18 +173,20 @@ const formatItems = (video, template) => {
   const presenters =
     video.presenters.length > 0
       ? video.presenters.map((presenter) => {
-          return !presenter.firstName || !presenter.lastName
-            ? {
-                creatorType: 'contributor',
-                name: presenter.firstName || '' + presenter.lastName || '',
-              }
-            : {
-                creatorType: 'contributor',
-                firstName: presenter.firstName,
-                lastName: presenter.lastName,
-              };
+          if (presenter.lastName !== 'Unknown') {
+            return !presenter.firstName || !presenter.lastName
+              ? {
+                  creatorType: 'contributor',
+                  name: presenter.firstName || '' + presenter.lastName || '',
+                }
+              : {
+                  creatorType: 'contributor',
+                  firstName: presenter.firstName,
+                  lastName: presenter.lastName,
+                };
+          }
         })
-      : '';
+      : [];
 
   return {
     ...template,
