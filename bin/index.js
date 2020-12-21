@@ -27,6 +27,34 @@ program
     (int) => parseInt(int > 100 ? 100 : int)
   )
   .option(
+    '-C, --created-after <date>',
+    'return only records created after a specified date',
+    (date) => {
+      const uModifiedDate = Date.parse(date);
+      if (typeof uModifiedDate === 'number' && uModifiedDate > 0) {
+        const modifiedDate = new Date(uModifiedDate);
+        return encodeURIComponent(modifiedDate.toLocaleString());
+      } else {
+        const modifiedDate = new Date();
+        return encodeURIComponent(modifiedDate.toLocaleString());
+      }
+    }
+  )
+  .option(
+    '-M, --modified-after <date>',
+    'return only records modified after a specified date',
+    (date) => {
+      const uModifiedDate = Date.parse(date);
+      if (typeof uModifiedDate === 'number' && uModifiedDate > 0) {
+        const modifiedDate = new Date(uModifiedDate);
+        return encodeURIComponent(modifiedDate.toLocaleString());
+      } else {
+        const modifiedDate = new Date();
+        return encodeURIComponent(modifiedDate.toLocaleString());
+      }
+    }
+  )
+  .option(
     '-c, --chunk-size <number>',
     'number of items to add to Zotero in one request, ≤50',
     (int) => parseInt(int > 50 ? 50 : int),
@@ -64,7 +92,7 @@ const zotero = axios.create({
 zoteroLibrary.defaults.headers.post['Content-Type'] = 'application/json';
 
 const esovdb = axios.create({
-  baseURL: 'https://airtable-api-proxy-avana.codeanyapp.com/api/',
+  baseURL: `https://${process.env.ESOVDB_PROXY_CACHE}.codeanyapp.com/esovdb/`,
   headers: esovdbHeaders,
 });
 
@@ -82,6 +110,14 @@ const getVideos = async (params) => {
   log(
     `Retrieving ${params.maxRecords ? params.maxRecords : 'all'} videos, ${
       params.pageSize ? params.pageSize + ' per page' : '100 per page'
+    }${
+      params.modifiedAfter
+        ? ', modified after ' + decodeURIComponent(params.modifiedAfter)
+        : ''
+    }${
+      params.createdAfter
+        ? ', created after ' + decodeURIComponent(params.createdAtAfter)
+        : ''
     }...`
   );
 
@@ -90,11 +126,7 @@ const getVideos = async (params) => {
 
     if (response) {
       log(
-        chalk.green(
-          `› Successfully retrieved ${
-            params.maxRecords ? params.maxRecords : 'all'
-          } videos.`
-        )
+        chalk.green(`› Successfully retrieved ${response.data.length} videos.`)
       );
     }
 
@@ -227,6 +259,9 @@ const formatItems = (video, template) => {
     program.parse(process.argv);
     if (program.maxRecords) params.maxRecords = program.maxRecords;
     if (program.pageSize) params.pageSize = program.pageSize;
+    if (program.createdAfter) params.createdAfter = program.createdAfter;
+    if (program.modifiedAfter) params.modifiedAfter = program.modifiedAfter;
+
     const videos = await getVideos(params);
 
     if (videos) {
@@ -245,8 +280,10 @@ const formatItems = (video, template) => {
 
         process.exit();
       }
+
       const template = await getTemplate();
       let items = videos.map((video) => formatItems(video, template));
+
       let i = 0,
         total = 0,
         queue = items.length;
