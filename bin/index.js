@@ -11,24 +11,36 @@ const dotenv = require('dotenv').config({
 
 const { program } = require('commander');
 program
-  .name('zotvid')
+  .name(chalk.bold('zotvid'))
   .description(
-    'Gets a specified number of records from the ESOVDB and adds them as items in a Zotero library'
+    'Gets a specified number of records from the ESOVDB and adds them as items in a Zotero library.'
   )
-  .version(version || '1.0.0', '-v, --version', 'output the current version')
+  .version(
+    version || '1.0.0',
+    '-v, --version',
+    `Displays the current version of ${chalk.bold('zotlib')}.`
+  )
   .option(
     '-m, --max-records <number>',
-    'total number of items to add to Zotero (default: all items)',
+    `Total ${chalk.underline(
+      'number'
+    )} of items to add to Zotero. (default: all items)`,
     (int) => parseInt(int)
   )
   .option(
     '-p, --page-size <number>',
-    'number of items to get from ESOVDB in one request, ≤100 (default: 100)',
+    `Maximum ${chalk.underline(
+      'number'
+    )} of items to retrieve from ESOVDB for each individual page request, ≤100. (default: 100)`,
     (int) => parseInt(int > 100 ? 100 : int)
   )
   .option(
     '-C, --created-after <date>',
-    'return only records created after a specified date',
+    `Include only records created after a specified ${chalk.underline(
+      'date'
+    )}. Assumes GMT if time is excluded—if included, ${chalk.bold(
+      'zotlib'
+    )} uses the local timezone.`,
     (date) => {
       const uModifiedDate = Date.parse(date);
       if (typeof uModifiedDate === 'number' && uModifiedDate > 0) {
@@ -42,7 +54,11 @@ program
   )
   .option(
     '-M, --modified-after <date>',
-    'return only records modified after a specified date',
+    `Include only records modified after a specified ${chalk.underline(
+      'date'
+    )}. Assumes GMT if time is excluded—if included, ${chalk.bold(
+      'zotlib'
+    )} uses the local timezone.`,
     (date) => {
       const uModifiedDate = Date.parse(date);
       if (typeof uModifiedDate === 'number' && uModifiedDate > 0) {
@@ -56,27 +72,30 @@ program
   )
   .option(
     '-c, --chunk-size <number>',
-    'number of items to add to Zotero in one request, ≤50',
+    `Maxmimum ${chalk.underline(
+      'number'
+    )} of items to add to Zotero in a single request, ≤50.`,
     (int) => parseInt(int > 50 ? 50 : int),
     50
   )
   .option(
     '-w, --wait-secs <number>',
-    'number of seconds to wait between Zotero requests',
+    `${chalk.underline('Number')} of seconds to wait between Zotero requests.`,
     (int) => parseInt(int),
     10
   )
-  .option('-j, --json', 'retrieve raw json without adding to Zotero')
-  .option('-s, --silent', 'run without any logging');
+  .option('-j, --json', 'Retrieve raw json without adding to Zotero.')
+  .option('-s, --silent', 'Run without any logging.')
+  .helpOption('-h, --help', 'Display this help file.');
 
 const esovdbHeaders = {
-  'User-Agent': 'zotero-esovdb/' + version || '1.0.0',
+  'User-Agent': 'zotero-esovdb/' + version || '1.1.0',
 };
 
 const zoteroHeaders = {
   Authorization: 'Bearer ' + process.env.ZOTERO_API_KEY,
   'Zotero-API-Version': '3',
-  'User-Agent': 'zotero-esovdb/' + version || '1.0.0',
+  'User-Agent': 'zotero-esovdb/' + version || '1.1.0',
 };
 
 const zoteroLibrary = axios.create({
@@ -116,7 +135,7 @@ const getVideos = async (params) => {
         : ''
     }${
       params.createdAfter
-        ? ', created after ' + decodeURIComponent(params.createdAtAfter)
+        ? ', created after ' + decodeURIComponent(params.createdAfter)
         : ''
     }...`
   );
