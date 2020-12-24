@@ -111,7 +111,7 @@ const zotero = axios.create({
 zoteroLibrary.defaults.headers.post['Content-Type'] = 'application/json';
 
 const esovdb = axios.create({
-  baseURL: `https://${process.env.ESOVDB_PROXY_CACHE}.codeanyapp.com/esovdb/`,
+  baseURL: `https://${process.env.ESOVDB_PROXY_CACHE}/esovdb/`,
   headers: esovdbHeaders,
 });
 
@@ -143,7 +143,7 @@ const getVideos = async (params) => {
   try {
     const response = await esovdb.get('videos/list', { params: params });
 
-    if (response) {
+    if (response && response.data.length > 0) {
       log(
         chalk.green(`› Successfully retrieved ${response.data.length} videos.`)
       );
@@ -283,7 +283,7 @@ const formatItems = (video, template) => {
 
     const videos = await getVideos(params);
 
-    if (videos) {
+    if (videos && videos.length > 0) {
       if (program.json) {
         const json = JSON.stringify(videos);
 
@@ -333,7 +333,7 @@ const formatItems = (video, template) => {
         chalk.bold.green(`Added ${total} new items to Zotero from the ESOVDB.`)
       );
     } else {
-      console.error(chalk.bold.red('No videos retrieved.'));
+      console.error(chalk.bold('No videos retrieved from the ESOVBD.'));
     }
   } catch (err) {
     console.error(err);
