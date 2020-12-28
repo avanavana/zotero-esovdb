@@ -40,7 +40,9 @@ program
       'date'
     )}. Assumes GMT if time is excluded—if included, ${chalk.bold(
       'zotlib'
-    )} uses the local timezone.`,
+    )} uses the local timezone. Excludes option ${chalk.bold(
+      '-M'
+    )} ${chalk.bold('--modified-after')}).`,
     (date) => {
       const uModifiedDate = Date.parse(date);
       if (typeof uModifiedDate === 'number' && uModifiedDate > 0) {
@@ -58,7 +60,9 @@ program
       'date'
     )}. Assumes GMT if time is excluded—if included, ${chalk.bold(
       'zotlib'
-    )} uses the local timezone.`,
+    )} uses the local timezone. Excludes option ${chalk.bold(
+      '-C'
+    )} ${chalk.bold('--created-after')}).`,
     (date) => {
       const uModifiedDate = Date.parse(date);
       if (typeof uModifiedDate === 'number' && uModifiedDate > 0) {
@@ -103,17 +107,19 @@ const zoteroLibrary = axios.create({
   headers: zoteroHeaders,
 });
 
+zoteroLibrary.defaults.headers.post['Content-Type'] = 'application/json';
+
 const zotero = axios.create({
   baseURL: 'https://api.zotero.org/',
   headers: zoteroHeaders,
 });
 
-zoteroLibrary.defaults.headers.post['Content-Type'] = 'application/json';
-
 const esovdb = axios.create({
   baseURL: `https://${process.env.ESOVDB_PROXY_CACHE}/esovdb/`,
   headers: esovdbHeaders,
 });
+
+esovdb.defaults.headers.post['Content-Type'] = 'application/json';
 
 const log = (data) => {
   if (!program.silent) console.log(data);
@@ -156,6 +162,35 @@ const getVideos = async (params) => {
   }
 };
 
+const updateVideos = async (items) => {
+  log(
+    `Updating Zotero key and version for ${items.length} item${
+      items.length > 1 ? 's' : ''
+    } on the ESOVDB...`
+  );
+
+  try {
+    const response = await esovdb.post('videos/update', JSON.stringify(items));
+
+    if (response.status === 200) {
+      return JSON.parse(response.config.data);
+    } else {
+      console.error(
+        chalk.bold.red(
+          `[ERROR] Couldn't update ${items.length} item${
+            items.length > 1 ? 's' : ''
+          } on the ESOVDB.`
+        )
+      );
+
+      throw new Error(err);
+    }
+  } catch (err) {
+    console.error(chalk.bold.red(err));
+    throw new Error(err);
+  }
+};
+
 const getTemplate = async () => {
   log('Retrieving template from Zotero...');
   try {
@@ -173,19 +208,29 @@ const getTemplate = async () => {
   }
 };
 
-const addItems = async (items) => {
+const postItems = async (items) => {
   try {
     const response = await zoteroLibrary.post('items', items);
+
     const successful = Object.values(response.data.successful);
+    const unchanged = Object.values(response.data.unchanged);
     const failed = Object.values(response.data.failed);
 
     if (successful.length > 0) {
       log(
         chalk.green(
-          `› Successfully added ${successful.length} item${
+          `› Successfully posted ${successful.length} item${
             successful.length > 1 ? 's' : ''
           }.`
         )
+      );
+    }
+
+    if (unchanged.length > 0) {
+      log(
+        `› ${unchanged.length} item${
+          unchanged.length > 1 ? 's' : ''
+        } left unchanged.`
       );
     }
 
@@ -197,14 +242,14 @@ const addItems = async (items) => {
         if (err) {
           console.error(
             chalk.bold.red(
-              'An error occured while writing JSON Object to File.'
+              '[ERROR] An error occured while writing JSON Object to File.'
             )
           );
         }
       });
     }
 
-    return { successful: successful, failed: failed };
+    return { successful: successful, unchanged: unchanged, failed: failed };
   } catch (err) {
     console.error(err);
     throw new Error(err);
@@ -239,7 +284,7 @@ const formatItems = (video, template) => {
         })
       : [];
 
-  return {
+  const payload = {
     ...template,
     itemType: 'videoRecording',
     title: video.title,
@@ -270,16 +315,36 @@ const formatItems = (video, template) => {
     collections: ['7J7AJ2BH'],
     relations: {},
   };
+
+  if (video.zoteroKey && video.zoteroVersion) {
+    payload.key = video.zoteroKey;
+    payload.version = video.zoteroVersion;
+  }
+
+  return payload;
 };
 
 (async () => {
   try {
     const params = {};
     program.parse(process.argv);
+
     if (program.maxRecords) params.maxRecords = program.maxRecords;
     if (program.pageSize) params.pageSize = program.pageSize;
-    if (program.createdAfter) params.createdAfter = program.createdAfter;
-    if (program.modifiedAfter) params.modifiedAfter = program.modifiedAfter;
+
+    if (program.createdAfter && program.modifiedAfter) {
+      if (
+        Object.keys(program).indexOf('createdAfter') >
+        Object.keys(program).indexOf('modifiedAfter')
+      ) {
+        params.createdAfter = program.createdAfter;
+      } else {
+        params.modifiedAfter = program.modifiedAfter;
+      }
+    } else {
+      if (program.createdAfter) params.createdAfter = program.createdAfter;
+      if (program.modifiedAfter) params.modifiedAfter = program.modifiedAfter;
+    }
 
     const videos = await getVideos(params);
 
@@ -291,7 +356,7 @@ const formatItems = (video, template) => {
           if (err) {
             console.error(
               chalk.bold.red(
-                'An error occured while writing JSON Object to File.'
+                '[ERROR] An error occured while writing JSON Object to File.'
               )
             );
           }
@@ -304,12 +369,15 @@ const formatItems = (video, template) => {
       let items = videos.map((video) => formatItems(video, template));
 
       let i = 0,
-        total = 0,
+        totalSuccessful = 0,
+        totalUnchanged = 0,
+        totalFailed = 0,
+        posted = [],
         queue = items.length;
 
       while (items.length > 0) {
         log(
-          `Adding item${items.length > 1 ? 's' : ''} ${
+          `Posting item${items.length > 1 ? 's' : ''} ${
             i * program.chunkSize + 1
           }${items.length > 1 ? '-' : ''}${
             items.length > 1
@@ -321,17 +389,69 @@ const formatItems = (video, template) => {
           } of ${queue} total to Zotero...`
         );
 
-        let { successful, failed } = await addItems(
+        let { successful, unchanged, failed } = await postItems(
           items.slice(0, program.chunkSize)
         );
-        total += successful.length;
+
+        if (successful.length > 0) posted = [...posted, ...successful];
+
+        totalSuccessful += successful.length;
+        totalUnchanged += unchanged.length;
+        totalFailed += failed.length;
+
         if (items.length > program.chunkSize) await sleep(program.waitSecs);
         i++, (items = items.slice(program.chunkSize));
       }
 
-      log(
-        chalk.bold.green(`Added ${total} new items to Zotero from the ESOVDB.`)
-      );
+      log(chalk.bold('[DONE] Posted to Zotero:'));
+
+      if (totalSuccessful > 0)
+        log(
+          chalk.bold.green(
+            `› [${totalSuccessful}] new item${
+              totalSuccessful > 1 ? 's' : ''
+            } total added or updated.`
+          )
+        );
+      if (totalUnchanged > 0)
+        log(
+          chalk.bold(
+            `› [${totalUnchanged}] item${
+              totalUnchanged > 1 ? 's' : ''
+            } total left unchanged.`
+          )
+        );
+      if (totalFailed > 0)
+        log(
+          chalk.bold.red(
+            `› [${totalUnchanged}] item${
+              totalFailed > 1 ? 's' : ''
+            } total failed to add or update.`
+          )
+        );
+      if (posted.length > 0) {
+        const itemsToSync = posted.map((item) => ({
+          id: item.data.archiveLocation.match(/rec[\w]{14}$/)[0],
+          fields: {
+            'Zotero Key': item.key,
+            'Zotero Version': item.version,
+          },
+        }));
+
+        const updated = await updateVideos(itemsToSync);
+
+        if (updated && updated.length > 0) {
+          log(
+            chalk.bold.green(
+              `› [${updated.length}] item${
+                updated.length > 1 ? "s'" : "'s"
+              } Zotero key and version synced with the ESOVDB.`
+            )
+          );
+        } else {
+          console.error(chalk.bold('Error syncing items with the ESOVBD.'));
+        }
+      }
     } else {
       console.error(chalk.bold('No videos retrieved from the ESOVBD.'));
     }
