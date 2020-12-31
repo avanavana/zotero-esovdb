@@ -13,7 +13,7 @@ const { program } = require('commander');
 program
   .name(chalk.bold('zotvid'))
   .description(
-    'Gets a specified number of records from the ESOVDB and adds them as items in a Zotero library.'
+    'Gets a specified number of records from the ESOVDB (Earth Science Online Video Database), adds them as items in a Zotero library, and then re-syncs the new Zotero version number or newly assigned Zotero keys with the ESOVDB.  Uses airtable-api-proxy (https://github.com/avanavana/airtable-api-proxy) for communicating with both the Airtable and Zotero APIs.'
   )
   .version(
     version || '1.0.0',
@@ -31,7 +31,7 @@ program
     '-p, --page-size <number>',
     `Maximum ${chalk.underline(
       'number'
-    )} of items to retrieve from ESOVDB for each individual page request, ≤100. (default: 100)`,
+    )} of items (≤100) to retrieve from ESOVDB for each individual page request. (default: 100)`,
     (int) => parseInt(int > 100 ? 100 : int)
   )
   .option(
@@ -78,17 +78,19 @@ program
     '-c, --chunk-size <number>',
     `Maxmimum ${chalk.underline(
       'number'
-    )} of items to add to Zotero in a single request, ≤50.`,
+    )} of items (≤50) to add to Zotero in a single request, to avoid rate-limiting.`,
     (int) => parseInt(int > 50 ? 50 : int),
     50
   )
   .option(
-    '-w, --wait-secs <number>',
-    `${chalk.underline('Number')} of seconds to wait between Zotero requests.`,
+    '-w, --wait-secs <secs>',
+    `${chalk.underline(
+      'Number'
+    )} of seconds to wait between Zotero requests, to avoid rate-limiting.`,
     (int) => parseInt(int),
     10
   )
-  .option('-j, --json', 'Retrieve raw json without adding to Zotero.')
+  .option('-j, --json', 'Retrieve raw json without syncing with Zotero.')
   .option('-s, --silent', 'Run without any logging.')
   .helpOption('-h, --help', 'Display this help file.');
 
@@ -175,15 +177,12 @@ const updateVideos = async (items) => {
     if (response.status === 200) {
       return JSON.parse(response.config.data);
     } else {
-      console.error(
-        chalk.bold.red(
-          `[ERROR] Couldn't update ${items.length} item${
-            items.length > 1 ? 's' : ''
-          } on the ESOVDB.`
-        )
-      );
+      let error = `[ERROR] Couldn't update ${items.length} item${
+        items.length > 1 ? 's' : ''
+      } on the ESOVDB.`;
+      console.error(chalk.bold.red(error));
 
-      throw new Error(err);
+      throw new Error(error);
     }
   } catch (err) {
     console.error(chalk.bold.red(err));
@@ -235,7 +234,13 @@ const postItems = async (items) => {
     }
 
     if (failed.length > 0) {
-      console.error(chalk.bold.red(`› Failed to add ${failed.length} videos.`));
+      console.error(
+        chalk.bold.red(
+          `› Failed to post ${failed.length} video${
+            failed.length > 1 ? 's' : ''
+          }.`
+        )
+      );
       const failedItems = JSON.stringify(response.data.failed);
 
       fs.writeFile('failed.json', failedItems, 'utf8', (err) => {
@@ -408,11 +413,12 @@ const formatItems = (video, template) => {
       if (totalSuccessful > 0)
         log(
           chalk.bold.green(
-            `› [${totalSuccessful}] new item${
+            `› [${totalSuccessful}] item${
               totalSuccessful > 1 ? 's' : ''
             } total added or updated.`
           )
         );
+
       if (totalUnchanged > 0)
         log(
           chalk.bold(
@@ -421,6 +427,7 @@ const formatItems = (video, template) => {
             } total left unchanged.`
           )
         );
+
       if (totalFailed > 0)
         log(
           chalk.bold.red(
@@ -429,6 +436,7 @@ const formatItems = (video, template) => {
             } total failed to add or update.`
           )
         );
+
       if (posted.length > 0) {
         const itemsToSync = posted.map((item) => ({
           id: item.data.archiveLocation.match(/rec[\w]{14}$/)[0],
@@ -449,7 +457,9 @@ const formatItems = (video, template) => {
             )
           );
         } else {
-          console.error(chalk.bold('Error syncing items with the ESOVBD.'));
+          console.error(
+            chalk.bold('[ERROR] Error syncing items with the ESOVBD.')
+          );
         }
       }
     } else {

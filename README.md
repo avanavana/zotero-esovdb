@@ -1,31 +1,32 @@
 # zotero-esovdb
 
-Gets a specified number of records from the ESOVDB (Earth Science Online Video Database) and adds them as items in a Zotero library
+Gets a specified number of records from the ESOVDB (Earth Science Online Video Database), adds them as items in a Zotero library, and then re-syncs the new Zotero version number or newly assigned Zotero keys with the ESOVDB. Uses [avanavana/airtable-api-proxy](https://github.com/avanavana/airtable-api-proxy) for communicating with both the Airtable and Zotero APIs.
 
 Visit the [The Earth Science Online Video Database](https://airtable.com/shrFBKQwGjstk7TVn)
-
-Client-side of [avanavana/airtable-api-proxy](https://github.com/avanavana/airtable-api-proxy).
 
 To install as CLI:
 `$ npm install -g zotero-esovdb`
 
-Be sure to create a .env file that contains your own `ZOTERO_USER` and `ZOTERO_API_KEY` values, obtainable through the settings page of your Zotero account.
+Be sure to create a .env file that contains your own `ZOTERO_USER` and `ZOTERO_API_KEY` values, obtainable through the settings page of your Zotero account, and connect to your own instance of [avanavana/airtable-api-proxy](https://github.com/avanavana/airtable-api-proxy).
 
 Usage:
 
 ```
-Usage: zotvid [options]
-Gets a specified number of records from the ESOVDB and add them as items in a Zotero library
+Usage: zotvid [-m | --max-records <number>] [-p | --page-size <number>] [(-C | --createdAfter <date>|-M | --modified-after <date>)] [-c | --chunk-size <number>] [-w | --wait-secs <secs>] [-j | --json] [-s | --silent] [-v | --version] [-h | --help]
+
+Gets a specified number of records from the ESOVDB (Earth Science Online Video Database), adds them as items in a Zotero library, and then re-syncs the new Zotero version number or newly assigned Zotero keys with the ESOVDB.  Uses airtable-api-proxy (https://github.com/avanavana/airtable-api-proxy) for communicating with both the Airtable and Zotero APIs.
+
 Options:
-  -v, --version               output the current version
-  -m, --max-records <number>  total number of items to add to Zotero (default: all items)
-  -p, --page-size <number>    number of items to get from ESOVDB in one request, ≤100 (default:
-                              100)
-  -c, --chunk-size <number>   number of items to add to Zotero in one request, ≤50 (default: 50)
-  -w, --wait-secs <number>    number of seconds to wait between Zotero requests (default: 10)
-  -j, --json                  retrieve raw json without adding to Zotero
-  -s, --silent                run without any logging
-  -h, --help                  display help for command
+  -v, --version                Displays the current version of zotlib.
+  -m, --max-records <number>   Total number of items to add to Zotero. (default: all items)
+  -p, --page-size <number>     Maximum number of items (≤100) to retrieve from ESOVDB for each individual page request. (default: 100)
+  -C, --created-after <date>   Include only records created after a specified date. Assumes GMT if time is excluded—if included, zotvid uses the local timezone. Excludes option -M --modified-after).
+  -M, --modified-after <date>  Include only records modified after a specified date. Assumes GMT if time is excluded—if included, zotvid uses the local timezone. Excludes option -C --created-after).
+  -c, --chunk-size <number>    Maxmimum number of items (≤50) to add to Zotero in a single request, to avoid rate-limiting. (default: 50)
+  -w, --wait-secs <secs>       Number of seconds to wait between Zotero requests, to avoid rate-limiting. (default: 10)
+  -j, --json                   Retrieve raw json without adding to Zotero.
+  -s, --silent                 Run without any logging.
+  -h, --help                   Display this help file.
 ```
 
 MIT License
