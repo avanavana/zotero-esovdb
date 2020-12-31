@@ -4,12 +4,16 @@ Gets a specified number of records from the ESOVDB (Earth Science Online Video D
 
 Visit the [The Earth Science Online Video Database](https://airtable.com/shrFBKQwGjstk7TVn)
 
+### Use as CLI
+
 To install as CLI:
-`$ npm install -g zotero-esovdb`
+`$ npm install -g zotero-esovdb`. To run: `zotvid [options]` (see below).
+
+### Additional Notes
 
 Be sure to create a .env file that contains your own `ZOTERO_USER` and `ZOTERO_API_KEY` values, obtainable through the settings page of your Zotero account, and connect to your own instance of [avanavana/airtable-api-proxy](https://github.com/avanavana/airtable-api-proxy).
 
-Usage:
+### Usage
 
 ```
 Usage: zotvid [-m | --max-records <number>] [-p | --page-size <number>]
@@ -23,7 +27,7 @@ assigned Zotero keys with the ESOVDB.  Uses airtable-api-proxy
 Zotero APIs.
 
 Options:
-  -v, --version                Displays the current version of zotlib.
+  -v, --version                Displays the current version of zotvid.
   -m, --max-records <number>   Total number of items to add to Zotero. (default: all items)
   -p, --page-size <number>     Maximum number of items (≤100) to retrieve from ESOVDB for each
                                individual page request. (default: 100)
