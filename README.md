@@ -36,7 +36,7 @@ Options:
   -M, --modified-after <date>  Include only records modified after a specified date. Assumes GMT
                                if time is excluded—if included, zotvid uses the local timezone.
                                Excludes option -C --created-after).
-  -c, --chunk-size <number>    Maxmimum number of items (≤50) to add to Zotero in a single reque-
+  -c, --chunk-size <number>    Maximum number of items (≤50) to add to Zotero in a single reque-
                                st, to avoid rate-limiting. (default: 50)
   -w, --wait-secs <secs>       Number of seconds to wait between Zotero requests, to avoid rate-
                                limiting. (default: 10)
