@@ -27,7 +27,7 @@ Zotero keys with the ESOVDB.  Uses airtable-api-proxy (https://github.com/avanav
 for communicating with both the Airtable and Zotero APIs.
 
 Options:
-  -v, --version                Displays the current version of zotlib.
+  -v, --version                Displays the current version of zotvid.
   -m, --max-records <number>   Total number of items to add to Zotero. (default: all items)
   -p, --page-size <number>     Maximum number of items (≤100) to retrieve from ESOVDB for each
                                individual page request. (default: 100)
@@ -36,10 +36,10 @@ Options:
   -w, --wait-secs <secs>       Number of seconds to wait between Zotero requests, to avoid
                                rate-limiting. (default: 10)
   -C, --created-after <date>   Include only records created after a specified date. Assumes GMT
-                               if time is excluded—if included, zotlib uses the local timezone.
+                               if time is excluded—if included, zotvid uses the local timezone.
                                Excludes option -M/--modified-after).
   -M, --modified-after <date>  Include only records modified after a specified date. Assumes GMT
-                               if time is excluded—if included, zotlib uses the local timezone.
+                               if time is excluded—if included, zotvid uses the local timezone.
                                Excludes option -C/--created-after).
   -j, --json                   Retrieve raw json without syncing with Zotero.
   -s, --silent                 Run without any logging.
