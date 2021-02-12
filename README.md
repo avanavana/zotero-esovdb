@@ -17,9 +17,9 @@ Be sure to create a .env file that contains your own `ZOTERO_USER` and `ZOTERO_A
 
 ```
 Usage: zotvid [ -m <number> ] [ --max-records=<number> ] [ -p <number> ] [ --page-size=<number> ]
-[ -c <number> ] [ --chunk-size=<number>] [ -w <secs>] [ --wait-secs=<secs>]
-[ ( -C <date> | -M <date> ) ] [ ( --created-after=<date> | --modified-after=<date> ) ]
-[ -j ] [ --json ] [ -s ] [ --silent ] [ -v ] [ --version ] [ -h ] [ --help ]
+              [ -c <number> ] [ --chunk-size=<number>] [ -w <secs>] [ --wait-secs=<secs>]
+              [ ( -C <date> | -M <date> ) ] [ ( --created-after=<date> | --modified-after=<date> ) ]
+              [ -j ] [ --json ] [ -s ] [ --silent ] [ -v ] [ --version ] [ -h ] [ --help ]
 
 Gets a specified number of records from the ESOVDB (Earth Science Online Video Database), adds them
 as items in a Zotero library, and then re-syncs the new Zotero version number or newly assigned
