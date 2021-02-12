@@ -1,5 +1,11 @@
 #!/usr/bin/env node
 
+/**
+ * @file zotero-esovdb
+ * @author Avana Vana <dear.avana@gmail.com>
+ * @version 1.3.0
+ */
+
 const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
@@ -12,13 +18,42 @@ const dotenv = require('dotenv').config({
 const { program } = require('commander');
 program
   .name(chalk.bold('zotvid'))
+  .usage(
+    `[ ${chalk.bold('-m')} <${chalk.underline('number')}> ] [ ${chalk.bold(
+      '--max-records'
+    )}=<${chalk.underline('number')}> ] [ ${chalk.bold(
+      '-p'
+    )} <${chalk.underline('number')}> ] [ ${chalk.bold(
+      '--page-size'
+    )}=<${chalk.underline('number')}> ] [ ${chalk.bold(
+      '-c'
+    )} <${chalk.underline('number')}> ] [ ${chalk.bold(
+      '--chunk-size'
+    )}=<${chalk.underline('number')}>] [ ${chalk.bold('-w')} <${chalk.underline(
+      'secs'
+    )}>] [ ${chalk.bold('--wait-secs')}=<${chalk.underline(
+      'secs'
+    )}>] [ ( ${chalk.bold('-C')} <${chalk.underline('date')}> | ${chalk.bold(
+      '-M'
+    )} <${chalk.underline('date')}> ) ] [ ( ${chalk.bold(
+      '--created-after'
+    )}=<${chalk.underline('date')}> | ${chalk.bold(
+      '--modified-after'
+    )}=<${chalk.underline('date')}> ) ] [ ${chalk.bold('-j')} ] [ ${chalk.bold(
+      '--json'
+    )} ] [ ${chalk.bold('-s')} ] [ ${chalk.bold('--silent')} ] [ ${chalk.bold(
+      '-v'
+    )} ] [ ${chalk.bold('--version')} ] [ ${chalk.bold('-h')} ] [ ${chalk.bold(
+      '--help'
+    )} ]`
+  )
   .description(
     'Gets a specified number of records from the ESOVDB (Earth Science Online Video Database), adds them as items in a Zotero library, and then re-syncs the new Zotero version number or newly assigned Zotero keys with the ESOVDB.  Uses airtable-api-proxy (https://github.com/avanavana/airtable-api-proxy) for communicating with both the Airtable and Zotero APIs.'
   )
   .version(
-    version || '1.0.0',
+    version || '1.4.0',
     '-v, --version',
-    `Displays the current version of ${chalk.bold('zotlib')}.`
+    `Displays the current version of ${chalk.bold('zotvid')}.`
   )
   .option(
     '-m, --max-records <number>',
@@ -33,46 +68,6 @@ program
       'number'
     )} of items (≤100) to retrieve from ESOVDB for each individual page request. (default: 100)`,
     (int) => parseInt(int > 100 ? 100 : int)
-  )
-  .option(
-    '-C, --created-after <date>',
-    `Include only records created after a specified ${chalk.underline(
-      'date'
-    )}. Assumes GMT if time is excluded—if included, ${chalk.bold(
-      'zotlib'
-    )} uses the local timezone. Excludes option ${chalk.bold(
-      '-M'
-    )} ${chalk.bold('--modified-after')}).`,
-    (date) => {
-      const uModifiedDate = Date.parse(date);
-      if (typeof uModifiedDate === 'number' && uModifiedDate > 0) {
-        const modifiedDate = new Date(uModifiedDate);
-        return encodeURIComponent(modifiedDate.toLocaleString());
-      } else {
-        const modifiedDate = new Date();
-        return encodeURIComponent(modifiedDate.toLocaleString());
-      }
-    }
-  )
-  .option(
-    '-M, --modified-after <date>',
-    `Include only records modified after a specified ${chalk.underline(
-      'date'
-    )}. Assumes GMT if time is excluded—if included, ${chalk.bold(
-      'zotlib'
-    )} uses the local timezone. Excludes option ${chalk.bold(
-      '-C'
-    )} ${chalk.bold('--created-after')}).`,
-    (date) => {
-      const uModifiedDate = Date.parse(date);
-      if (typeof uModifiedDate === 'number' && uModifiedDate > 0) {
-        const modifiedDate = new Date(uModifiedDate);
-        return encodeURIComponent(modifiedDate.toLocaleString());
-      } else {
-        const modifiedDate = new Date();
-        return encodeURIComponent(modifiedDate.toLocaleString());
-      }
-    }
   )
   .option(
     '-c, --chunk-size <number>',
@@ -90,9 +85,62 @@ program
     (int) => parseInt(int),
     10
   )
+  .option(
+    '-C, --created-after <date>',
+    `Include only records created after a specified ${chalk.underline(
+      'date'
+    )}. Assumes GMT if time is excluded—if included, ${chalk.bold(
+      'zotvid'
+    )} uses the local timezone. Excludes option ${chalk.bold(
+      '-M'
+    )}/${chalk.bold('--modified-after')}).`,
+    (date) => {
+      const uModifiedDate = Date.parse(date);
+      if (typeof uModifiedDate === 'number' && uModifiedDate > 0) {
+        const modifiedDate = new Date(uModifiedDate);
+        return encodeURIComponent(modifiedDate.toLocaleString());
+      } else {
+        const modifiedDate = new Date();
+        return encodeURIComponent(modifiedDate.toLocaleString());
+      }
+    }
+  )
+  .option(
+    '-M, --modified-after <date>',
+    `Include only records modified after a specified ${chalk.underline(
+      'date'
+    )}. Assumes GMT if time is excluded—if included, ${chalk.bold(
+      'zotvid'
+    )} uses the local timezone. Excludes option ${chalk.bold(
+      '-C'
+    )}/${chalk.bold('--created-after')}).`,
+    (date) => {
+      const uModifiedDate = Date.parse(date);
+      if (typeof uModifiedDate === 'number' && uModifiedDate > 0) {
+        const modifiedDate = new Date(uModifiedDate);
+        return encodeURIComponent(modifiedDate.toLocaleString());
+      } else {
+        const modifiedDate = new Date();
+        return encodeURIComponent(modifiedDate.toLocaleString());
+      }
+    }
+  )
   .option('-j, --json', 'Retrieve raw json without syncing with Zotero.')
   .option('-s, --silent', 'Run without any logging.')
-  .helpOption('-h, --help', 'Display this help file.');
+  .helpOption('-h, --help', 'Display this help file.')
+  .on('--help', () => {
+    console.log('\nExamples:\n');
+    console.log('  $ zotvid\n  Syncs all records in the ESOVDB with Zotero.\n');
+    console.log(
+      '  $ zotvid -m 9 -p 3\n  Gets the latest 9 records in 3 separate Airtable API calls and syncs them with\n  a Zotero library.\n'
+    );
+    console.log(
+      '  $ zotvid -M "2020-12-31 00:00 am"\n  Syncs all records modified since Dec 31, 2020 at midnight and syncs them with\n  a Zotero library.\n'
+    );
+    console.log(
+      '  $ zotvid -j\n  Gets all records in the ESOVDB and downloads them to a json file.'
+    );
+  });
 
 const esovdbHeaders = {
   'User-Agent': 'zotero-esovdb/' + version || '1.1.0',
@@ -105,7 +153,7 @@ const zoteroHeaders = {
 };
 
 const zoteroLibrary = axios.create({
-  baseURL: `https://api.zotero.org/users/${process.env.ZOTERO_USER}/`,
+  baseURL: `https://api.zotero.org/groups/2764885/`,
   headers: zoteroHeaders,
 });
 
@@ -117,7 +165,7 @@ const zotero = axios.create({
 });
 
 const esovdb = axios.create({
-  baseURL: `https://${process.env.ESOVDB_PROXY_CACHE}/esovdb/`,
+  baseURL: `${process.env.ESOVDB_PROXY_CACHE}/esovdb/`,
   headers: esovdbHeaders,
 });
 
@@ -155,12 +203,13 @@ const getVideos = async (params) => {
       log(
         chalk.green(`› Successfully retrieved ${response.data.length} videos.`)
       );
-    }
 
-    return response.data;
+      return response.data;
+    } else {
+      throw new Error(err);
+    }
   } catch (err) {
-    console.error(chalk.bold.red(err));
-    throw new Error(err);
+    console.error(chalk.bold.red(err.message));
   }
 };
 
@@ -177,7 +226,7 @@ const updateVideos = async (items) => {
     if (response.status === 200) {
       return JSON.parse(response.config.data);
     } else {
-      let error = `[ERROR] Couldn't update ${items.length} item${
+      let error = `Couldn't update ${items.length} item${
         items.length > 1 ? 's' : ''
       } on the ESOVDB.`;
       console.error(chalk.bold.red(error));
@@ -185,7 +234,7 @@ const updateVideos = async (items) => {
       throw new Error(error);
     }
   } catch (err) {
-    console.error(chalk.bold.red(err));
+    console.error(chalk.bold.red(err.message));
     throw new Error(err);
   }
 };
@@ -199,11 +248,12 @@ const getTemplate = async () => {
 
     if (response.data) {
       log(chalk.green('› Successfully retrieved template.'));
+      return response.data;
+    } else {
+      throw new Error(`Couldn't get template from Zotero.`);
     }
-    return response.data;
   } catch (err) {
-    console.error(chalk.bold.red(err));
-    throw new Error(err);
+    console.error(chalk.bold.red(err.message));
   }
 };
 
@@ -241,23 +291,23 @@ const postItems = async (items) => {
           }.`
         )
       );
-      const failedItems = JSON.stringify(response.data.failed);
 
-      fs.writeFile('failed.json', failedItems, 'utf8', (err) => {
-        if (err) {
-          console.error(
-            chalk.bold.red(
-              '[ERROR] An error occured while writing JSON Object to File.'
-            )
-          );
+      fs.writeFile(
+        'failed.json',
+        JSON.stringify(response.data.failed),
+        'utf8',
+        (err) => {
+          if (err)
+            throw new Error(
+              'An error occured while writing JSON Object to File.'
+            );
         }
-      });
+      );
     }
 
     return { successful: successful, unchanged: unchanged, failed: failed };
   } catch (err) {
-    console.error(err);
-    throw new Error(err);
+    console.error(chalk.bold.red(err.message));
   }
 };
 
@@ -317,7 +367,7 @@ const formatItems = (video, template) => {
     rights: '',
     extra: extras.map((item) => item.title + ': ' + item.value).join('\n'),
     tags: [],
-    collections: ['7J7AJ2BH'],
+    collections: [],
     relations: {},
   };
 
@@ -355,19 +405,24 @@ const formatItems = (video, template) => {
 
     if (videos && videos.length > 0) {
       if (program.json) {
-        const json = JSON.stringify(videos);
+        try {
+          fs.writeFileSync(
+            'videos.json',
+            JSON.stringify(videos),
+            'utf8',
+            (err) => {
+              if (err)
+                throw new Error(
+                  'An error occured while writing JSON Object to File.'
+                );
+            }
+          );
 
-        fs.writeFileSync('videos.json', json, 'utf8', (err) => {
-          if (err) {
-            console.error(
-              chalk.bold.red(
-                '[ERROR] An error occured while writing JSON Object to File.'
-              )
-            );
-          }
-        });
-
-        process.exit();
+          process.exit();
+        } catch (err) {
+          console.error(chalk.bold.red(err.message));
+          process.exit(1);
+        }
       }
 
       const template = await getTemplate();
@@ -380,7 +435,7 @@ const formatItems = (video, template) => {
         posted = [],
         queue = items.length;
 
-      while (items.length > 0) {
+      while (items.length) {
         log(
           `Posting item${items.length > 1 ? 's' : ''} ${
             i * program.chunkSize + 1
@@ -395,7 +450,7 @@ const formatItems = (video, template) => {
         );
 
         let { successful, unchanged, failed } = await postItems(
-          items.slice(0, program.chunkSize)
+          items.splice(0, program.chunkSize)
         );
 
         if (successful.length > 0) posted = [...posted, ...successful];
@@ -405,7 +460,8 @@ const formatItems = (video, template) => {
         totalFailed += failed.length;
 
         if (items.length > program.chunkSize) await sleep(program.waitSecs);
-        i++, (items = items.slice(program.chunkSize));
+
+        i++;
       }
 
       log(chalk.bold('[DONE] Posted to Zotero:'));
@@ -457,16 +513,13 @@ const formatItems = (video, template) => {
             )
           );
         } else {
-          console.error(
-            chalk.bold('[ERROR] Error syncing items with the ESOVBD.')
-          );
+          throw new Error('Error syncing items with the ESOVBD.');
         }
       }
     } else {
-      console.error(chalk.bold('No videos retrieved from the ESOVBD.'));
+      throw new Error('No videos retrieved from the ESOVBD.');
     }
   } catch (err) {
-    console.error(err);
-    throw new Error(err);
+    console.error(chalk.bold.red(err.message));
   }
 })();
