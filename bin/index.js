@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * @file zotero-esovdb
+ * @file zotero-esovdb (zotvid)
  * @author Avana Vana <dear.avana@gmail.com>
  * @version 1.3.0
  */
@@ -170,6 +170,54 @@ const esovdb = axios.create({
 });
 
 esovdb.defaults.headers.post['Content-Type'] = 'application/json';
+
+/** @constant {Map} collections - Maps topic names from the ESOVDB to topic subcollection IDs in the Zotero library */
+const collections = new Map([
+  [
+    'Alluvial, Pluvial & Terrestrial Sedimentology, Erosion & Weathering, Geomorphology, Karst, Groundwater & Provenance',
+    'BV7G3CIC',
+  ],
+  [
+    `Early Earth, Life's Origins, Deep Biosphere, and the Formation of the Planet`,
+    '9DK53U7F',
+  ],
+  ['Geo-Archaeology', 'UJDCHPB5'],
+  ['Geological Stories, News, Tours, & Field Trips', 'XDFHQTC3'],
+  ['Glaciation, Atmospheric Science, Carbon Cycle, & Climate', 'AD997U4T'],
+  [
+    'History, Education, Careers, Field Work, Economic Geology, & Technology',
+    'M4NKIHBK',
+  ],
+  [
+    'Igneous & Metamorphic Petrology, Volcanism, & Hydrothermal Systems',
+    'L6JMIGTE',
+  ],
+  [
+    'Mantle Geodynamics, Geochemistry, Convection, Rheology, & Seismic Imaging and Modeling',
+    '5XQD67DA',
+  ],
+  [
+    'Marine & Littoral Sedimentology, Sequence Stratigraphy, Carbonates, Evaporites, Coal, Petroleum, and Mud Volcanism',
+    '37J3LYFL',
+  ],
+  [
+    'Minerals, Mining & Resources, Crystallography, & Solid-state Chemistry',
+    'YY5W7DB8',
+  ],
+  ['Paleobiology, Mass Extinctions, Fossils, & Evolution', 'VYWX6R2B'],
+  [
+    'Paleoclimatology, Isotope Geochemistry, Radiometric Dating, Deep Time, & Snowball Earth',
+    'L4PLXHN8',
+  ],
+  [
+    'Planetary Geology, Impact Events, Astronomy, & the Search for Extraterrestrial Life',
+    'HLV7WMZQ',
+  ],
+  ['Seafloor Spreading, Oceanography, Paleomagnetism, & Geodesy', 'NPDV3BHH'],
+  ['Seismology, Mass Wasting, Tsunamis, & Natural Disasters', '63TE3Y26'],
+  ['Tectonics, Terranes, Structural Geology, & Dynamic Topography', 'U3JYUDHI'],
+  ['The Anthropocene', 'P2WNJD9N'],
+]);
 
 const log = (data) => {
   if (!program.silent) console.log(data);
@@ -367,7 +415,9 @@ const formatItems = (video, template) => {
     rights: '',
     extra: extras.map((item) => item.title + ': ' + item.value).join('\n'),
     tags: [],
-    collections: [],
+    collections: collections.get(video.topic)
+      ? [collections.get(video.topic)]
+      : [],
     relations: {},
   };
 
