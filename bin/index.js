@@ -3,7 +3,7 @@
 /**
  * @file zotero-esovdb (zotvid)
  * @author Avana Vana <dear.avana@gmail.com>
- * @version 1.3.0
+ * @version 1.5.0
  */
 
 const axios = require('axios');
@@ -11,145 +11,19 @@ const fs = require('fs');
 const path = require('path');
 const chalk = require('chalk');
 const { version } = require('../package.json');
+const { program } = require('../config');
 const dotenv = require('dotenv').config({
   path: path.join(__dirname, '../', '.env'),
 });
 
-const { program } = require('commander');
-program
-  .name(chalk.bold('zotvid'))
-  .usage(
-    `[ ${chalk.bold('-m')} <${chalk.underline('number')}> ] [ ${chalk.bold(
-      '--max-records'
-    )}=<${chalk.underline('number')}> ] [ ${chalk.bold(
-      '-p'
-    )} <${chalk.underline('number')}> ] [ ${chalk.bold(
-      '--page-size'
-    )}=<${chalk.underline('number')}> ] [ ${chalk.bold(
-      '-c'
-    )} <${chalk.underline('number')}> ] [ ${chalk.bold(
-      '--chunk-size'
-    )}=<${chalk.underline('number')}>] [ ${chalk.bold('-w')} <${chalk.underline(
-      'secs'
-    )}>] [ ${chalk.bold('--wait-secs')}=<${chalk.underline(
-      'secs'
-    )}>] [ ( ${chalk.bold('-C')} <${chalk.underline('date')}> | ${chalk.bold(
-      '-M'
-    )} <${chalk.underline('date')}> ) ] [ ( ${chalk.bold(
-      '--created-after'
-    )}=<${chalk.underline('date')}> | ${chalk.bold(
-      '--modified-after'
-    )}=<${chalk.underline('date')}> ) ] [ ${chalk.bold('-j')} ] [ ${chalk.bold(
-      '--json'
-    )} ] [ ${chalk.bold('-s')} ] [ ${chalk.bold('--silent')} ] [ ${chalk.bold(
-      '-v'
-    )} ] [ ${chalk.bold('--version')} ] [ ${chalk.bold('-h')} ] [ ${chalk.bold(
-      '--help'
-    )} ]`
-  )
-  .description(
-    'Gets a specified number of records from the ESOVDB (Earth Science Online Video Database), adds them as items in a Zotero library, and then re-syncs the new Zotero version number or newly assigned Zotero keys with the ESOVDB.  Uses airtable-api-proxy (https://github.com/avanavana/airtable-api-proxy) for communicating with both the Airtable and Zotero APIs.'
-  )
-  .version(
-    version || '1.4.0',
-    '-v, --version',
-    `Displays the current version of ${chalk.bold('zotvid')}.`
-  )
-  .option(
-    '-m, --max-records <number>',
-    `Total ${chalk.underline(
-      'number'
-    )} of items to add to Zotero. (default: all items)`,
-    (int) => parseInt(int)
-  )
-  .option(
-    '-p, --page-size <number>',
-    `Maximum ${chalk.underline(
-      'number'
-    )} of items (≤100) to retrieve from ESOVDB for each individual page request. (default: 100)`,
-    (int) => parseInt(int > 100 ? 100 : int)
-  )
-  .option(
-    '-c, --chunk-size <number>',
-    `Maxmimum ${chalk.underline(
-      'number'
-    )} of items (≤50) to add to Zotero in a single request, to avoid rate-limiting.`,
-    (int) => parseInt(int > 50 ? 50 : int),
-    50
-  )
-  .option(
-    '-w, --wait-secs <secs>',
-    `${chalk.underline(
-      'Number'
-    )} of seconds to wait between Zotero requests, to avoid rate-limiting.`,
-    (int) => parseInt(int),
-    10
-  )
-  .option(
-    '-C, --created-after <date>',
-    `Include only records created after a specified ${chalk.underline(
-      'date'
-    )}. Assumes GMT if time is excluded—if included, ${chalk.bold(
-      'zotvid'
-    )} uses the local timezone. Excludes option ${chalk.bold(
-      '-M'
-    )}/${chalk.bold('--modified-after')}).`,
-    (date) => {
-      const uModifiedDate = Date.parse(date);
-      if (typeof uModifiedDate === 'number' && uModifiedDate > 0) {
-        const modifiedDate = new Date(uModifiedDate);
-        return encodeURIComponent(modifiedDate.toLocaleString());
-      } else {
-        const modifiedDate = new Date();
-        return encodeURIComponent(modifiedDate.toLocaleString());
-      }
-    }
-  )
-  .option(
-    '-M, --modified-after <date>',
-    `Include only records modified after a specified ${chalk.underline(
-      'date'
-    )}. Assumes GMT if time is excluded—if included, ${chalk.bold(
-      'zotvid'
-    )} uses the local timezone. Excludes option ${chalk.bold(
-      '-C'
-    )}/${chalk.bold('--created-after')}).`,
-    (date) => {
-      const uModifiedDate = Date.parse(date);
-      if (typeof uModifiedDate === 'number' && uModifiedDate > 0) {
-        const modifiedDate = new Date(uModifiedDate);
-        return encodeURIComponent(modifiedDate.toLocaleString());
-      } else {
-        const modifiedDate = new Date();
-        return encodeURIComponent(modifiedDate.toLocaleString());
-      }
-    }
-  )
-  .option('-j, --json', 'Retrieve raw json without syncing with Zotero.')
-  .option('-s, --silent', 'Run without any logging.')
-  .helpOption('-h, --help', 'Display this help file.')
-  .on('--help', () => {
-    console.log('\nExamples:\n');
-    console.log('  $ zotvid\n  Syncs all records in the ESOVDB with Zotero.\n');
-    console.log(
-      '  $ zotvid -m 9 -p 3\n  Gets the latest 9 records in 3 separate Airtable API calls and syncs them with\n  a Zotero library.\n'
-    );
-    console.log(
-      '  $ zotvid -M "2020-12-31 00:00 am"\n  Syncs all records modified since Dec 31, 2020 at midnight and syncs them with\n  a Zotero library.\n'
-    );
-    console.log(
-      '  $ zotvid -j\n  Gets all records in the ESOVDB and downloads them to a json file.'
-    );
-  });
-
 const esovdbHeaders = {
-  'User-Agent': 'zotero-esovdb/' + version || '1.1.0',
+  'User-Agent': 'zotero-esovdb/' + version || '1.5.0',
 };
 
 const zoteroHeaders = {
   Authorization: 'Bearer ' + process.env.ZOTERO_API_KEY,
   'Zotero-API-Version': '3',
-  'User-Agent': 'zotero-esovdb/' + version || '1.1.0',
+  'User-Agent': 'zotero-esovdb/' + version || '1.5.0',
 };
 
 const zoteroLibrary = axios.create({
@@ -171,63 +45,105 @@ const esovdb = axios.create({
 
 esovdb.defaults.headers.post['Content-Type'] = 'application/json';
 
-/** @constant {Map} collections - Maps topic names from the ESOVDB to topic subcollection IDs in the Zotero library */
+/** @constant {Map} collections - Maps parent collections names from the ESOVDB to parent collection IDs in the Zotero library */
 const collections = new Map([
-  [
-    'Alluvial, Pluvial & Terrestrial Sedimentology, Erosion & Weathering, Geomorphology, Karst, Groundwater & Provenance',
-    'BV7G3CIC',
-  ],
-  [
-    `Early Earth, Life's Origins, Deep Biosphere, and the Formation of the Planet`,
-    '9DK53U7F',
-  ],
-  ['Geo-Archaeology', 'UJDCHPB5'],
-  ['Geological Stories, News, Tours, & Field Trips', 'XDFHQTC3'],
-  ['Glaciation, Atmospheric Science, Carbon Cycle, & Climate', 'AD997U4T'],
-  [
-    'History, Education, Careers, Field Work, Economic Geology, & Technology',
-    'M4NKIHBK',
-  ],
-  [
-    'Igneous & Metamorphic Petrology, Volcanism, & Hydrothermal Systems',
-    'L6JMIGTE',
-  ],
-  [
-    'Mantle Geodynamics, Geochemistry, Convection, Rheology, & Seismic Imaging and Modeling',
-    '5XQD67DA',
-  ],
-  [
-    'Marine & Littoral Sedimentology, Sequence Stratigraphy, Carbonates, Evaporites, Coal, Petroleum, and Mud Volcanism',
-    '37J3LYFL',
-  ],
-  [
-    'Minerals, Mining & Resources, Crystallography, & Solid-state Chemistry',
-    'YY5W7DB8',
-  ],
-  ['Paleobiology, Mass Extinctions, Fossils, & Evolution', 'VYWX6R2B'],
-  [
-    'Paleoclimatology, Isotope Geochemistry, Radiometric Dating, Deep Time, & Snowball Earth',
-    'L4PLXHN8',
-  ],
-  [
-    'Planetary Geology, Impact Events, Astronomy, & the Search for Extraterrestrial Life',
-    'HLV7WMZQ',
-  ],
-  ['Seafloor Spreading, Oceanography, Paleomagnetism, & Geodesy', 'NPDV3BHH'],
-  ['Seismology, Mass Wasting, Tsunamis, & Natural Disasters', '63TE3Y26'],
-  ['Tectonics, Terranes, Structural Geology, & Dynamic Topography', 'U3JYUDHI'],
-  ['The Anthropocene', 'P2WNJD9N'],
+  ['series', 'HYQEFRGR'],
+  ['topics', 'EGB8TQZ8'],
 ]);
 
-const log = (data) => {
-  if (!program.silent) console.log(data);
+/** @constant {Map} tables - Maps request table params to their proper names on the ESOVDB */
+const tables = new Map([
+  ['videos', 'Videos'],
+  ['series', 'Series'],
+  ['topics', 'Topics'],
+  ['tags', 'Tags'],
+  ['organizations', 'Organizations'],
+  ['people', 'People'],
+  ['submissions', 'Submissions'],
+  ['issues', 'Issues'],
+]);
+
+/** @constant {Map} topics - Maps ESOVDB topics to their collection keys in Zotero */
+// prettier-ignore
+const topics = new Map([['Mantle Geodynamics, Geochemistry, Convection, Rheology, & Seismic Imaging and Modeling', '5XQD67DA'],
+['Igneous & Metamorphic Petrology, Volcanism, & Hydrothermal Systems', 'L6JMIGTE'],
+['Alluvial, Pluvial & Terrestrial Sedimentology, Erosion & Weathering, Geomorphology, Karst, Groundwater & Provenance', 'BV7G3CIC'],
+['Early Earth, Life\'s Origins, Deep Biosphere, and the Formation of the Planet', '9DK53U7F'],
+['Geological Stories, News, Tours, & Field Trips', 'XDFHQTC3'],
+['History, Education, Careers, Field Work, Economic Geology, & Technology', 'M4NKIHBK'],
+['Glaciation, Atmospheric Science, Carbon Cycle, & Climate', 'AD997U4T'],
+['The Anthropocene', 'P2WNJD9N'],
+['Geo-Archaeology', 'UJDCHPB5'],
+['Paleoclimatology, Isotope Geochemistry, Radiometric Dating, Deep Time, & Snowball Earth', 'L4PLXHN8'],
+['Seafloor Spreading, Oceanography, Paleomagnetism, & Geodesy', 'NPDV3BHH'],
+['Tectonics, Terranes, Structural Geology, & Dynamic Topography', 'U3JYUDHI'],
+['Seismology, Mass Wasting, Tsunamis, & Natural Disasters', '63TE3Y26'],
+['Minerals, Mining & Resources, Crystallography, & Solid-state Chemistry', 'YY5W7DB8'],
+['Marine & Littoral Sedimentology, Sequence Stratigraphy, Carbonates, Evaporites, Coal, Petroleum, and Mud Volcanism', '37J3LYFL'],
+['Planetary Geology, Impact Events, Astronomy, & the Search for Extraterrestrial Life', 'HLV7WMZQ'],
+['Paleobiology, Mass Extinctions, Fossils, & Evolution', 'VYWX6R2B']]);
+
+/**
+ *  Wraps console.log to disable any calls to it if program is run with -s ({@link silent}=true) enabled
+ *
+ *  @function log
+ *  @param {*} data - Data that should be logged through console.log if {@link silent} is false
+ *  @param {boolean} overrideSilent - Optional boolean that can be passed to log messages despite the -s ({@link silent}) option being enabled
+ */
+const log = (data, overrideSilent = false) => {
+  if (!program.silent || overrideSilent) console.log(data);
 };
 
-const sleep = (seconds) => {
-  return new Promise((resolve) => {
+/**
+ *  Utility sleep function based on units of seconds that returns a promise and can be consumed by async/await
+ *
+ *  @function sleep
+ *  @param {number} seconds - The number of seconds to sleep for (i.e. the number of seconds after which the promise will resolve)
+ *  @returns {Promise} Resolves after a specified [number]{@link ms} of seconds
+ */
+
+const sleep = (seconds) =>
+  new Promise((resolve) => {
     setTimeout(resolve, seconds * 1000);
   });
+
+/**
+ *  Sequentially reduces the results of one or more asynchronous functions, accumulating their results, in order
+ *
+ *  @async
+ *  @function queueAsync
+ *  @param {Array} functor - An array of anything, a functor, something mappable (e.g. Array.prototype.map())
+ *  @returns {Array} An array of values sequentially accumulated from each asynchronous function performed on the functor
+ */
+
+const queueAsync = async (functor) => {
+  const res = [];
+
+  functor.length > 1
+    ? await functor.reduce((a, c, i, { length }) =>
+        (i === 1 ? a() : a).then((val) => {
+          res.push(val);
+          return i === length - 1 ? c().then((val) => res.push(val)) : c();
+        })
+      )
+    : await functor[0]().then((val) => res.push(val));
+
+  return res;
 };
+
+/**
+ *  Retrieves videos from the ESOVDB API proxy cache based on parameters passed through the CLI
+ *
+ *  @async
+ *  @function getVideos
+ *  @requires axios
+ *  @param {Object} params - Object representing the state of all parameters passed through the CLI, maxRecords, pageSize, modifiedAfter, and createdAfter
+ *  @param {?number} params.maxRecords - Optional upper limit on number of videos to return from the ESOVDB, from most to least recent
+ *  @param {number} [params.pageSize=100] - Number of records to return per page request to Airtable via ESOVDB API proxy cache (default: 100)
+ *  @param {?string} params.modifiedAfter - URL-encoded date string, formatted through Date.toLocaleString()
+ *  @param {?string} params.createdAfter - URL-encoded date string, formatted through Date.toLocaleString()
+ *  @returns {Object[]} - Array of video objects filtered according to {@link params} with all necessary fields extracted from the ESOVDB
+ */
 
 const getVideos = async (params) => {
   log(
@@ -248,51 +164,64 @@ const getVideos = async (params) => {
     const response = await esovdb.get('videos/list', { params: params });
 
     if (response && response.data.length > 0) {
-      log(
-        chalk.green(`› Successfully retrieved ${response.data.length} videos.`)
-      );
-
+      // prettier-ignore
+      log(chalk.green(`› Successfully retrieved ${response.data.length} videos.`));
       return response.data;
     } else {
-      throw new Error(err);
+      throw new Error('Failed to retreive videos from the ESOVDB.');
     }
   } catch (err) {
     console.error(chalk.bold.red(err.message));
   }
 };
 
-const updateVideos = async (items) => {
-  log(
-    `Updating Zotero key and version for ${items.length} item${
-      items.length > 1 ? 's' : ''
-    } on the ESOVDB...`
-  );
+/**
+ *  Updates specified fields for given items in a specified ESOVDB table via proxy cache server and then returns the result for logging
+ *
+ *  @async
+ *  @function updateTable
+ *  @requires axios
+ *  @param {Object[]} items - An array of objects formatted as updates for Airtable (i.e. [ { id: 'recordId', fields: { 'Airtable Field': 'value', ... } }, ... ])
+ *  @returns {Object[]} The original array of Zotero items, {@link items}, returned from the ESOVDB API proxy cache after processing
+ */
+
+const updateTable = async (items, table) => {
+  // prettier-ignore
+  log(`Updating ${Object.keys(items[0].fields)
+    .map((field) => `"${field}"`)
+    .join(', ')} in "${tables.get(table)}" for ${items.length} item${items.length === 1 ? '' : 's'} on the ESOVDB...`);
 
   try {
-    const response = await esovdb.post('videos/update', JSON.stringify(items));
+    // prettier-ignore
+    const response = await esovdb.post(`${table}/update`, JSON.stringify(items));
 
     if (response.status === 200) {
       return JSON.parse(response.config.data);
     } else {
-      let error = `Couldn't update ${items.length} item${
-        items.length > 1 ? 's' : ''
-      } on the ESOVDB.`;
-      console.error(chalk.bold.red(error));
-
-      throw new Error(error);
+      // prettier-ignore
+      throw new Error(`Couldn't update ${items.length} item${items.length === 1 ? '' : 's'} on the ESOVDB.`);
     }
   } catch (err) {
     console.error(chalk.bold.red(err.message));
-    throw new Error(err);
   }
 };
+
+/**
+ *  Fetches a fresh 'videoRecording' template from Zotero with which to structure items in posts to the Zotero API
+ *
+ *  @async
+ *  @function getTemplate
+ *  @requires axios
+ *  @returns {Object} A Zotero new item template of type 'videoRecording'
+ *
+ *  @see [Zotero Web API 3.0 › Types & Fields › Getting a Template for a New Item]{@link https://www.zotero.org/support/dev/web_api/v3/types_and_fields#getting_a_template_for_a_new_item}
+ */
 
 const getTemplate = async () => {
   log('Retrieving template from Zotero...');
   try {
-    const response = await zotero.get('items/new', {
-      params: { itemType: 'videoRecording' },
-    });
+    // prettier-ignore
+    const response = await zotero.get('items/new', { params: { itemType: 'videoRecording' } });
 
     if (response.data) {
       log(chalk.green('› Successfully retrieved template.'));
@@ -305,6 +234,54 @@ const getTemplate = async () => {
   }
 };
 
+/**
+ *  Posts a new collection to the ESOVDB public Zotero library.
+ *
+ *  @async
+ *  @function createCollection
+ *  @requires axios
+ *  @param {string} name - The name of the collection to create in Zotero
+ *  @param {('series'|'topics')} parent - String representing the parent collection, one of either 'series' or 'topics' (for the time being)
+ *  @returns {ZoteroResponse} An object containing an array of successfully added or updated Zotero item objects, an array of Zotero item keys of unchanged Zotero items, and an array of Zotero item objects of Zotero items which failed to be added or updated
+ *
+ *  @see [Zotero Web API 3.0 › Write Requests › Creating a Collection]{@link https://www.zotero.org/support/dev/web_api/v3/write_requests#creating_a_collection}
+ */
+
+const createCollection = async (name, parent) => {
+  try {
+    if (collections.get(parent)) {
+      // prettier-ignore
+      log(`No ${parent} collection named "${name}", creating new collection...`);
+      // prettier-ignore
+      return await zoteroLibrary.post('collections', [{ name: name, parentCollection: collections.get(parent) }]);
+    } else {
+      throw new Error('Unrecognized subcollection type.');
+    }
+  } catch (err) {
+    console.error(chalk.bold.red(err.message));
+  }
+};
+
+/**
+ * @typedef {Object} ZoteroResponse
+ * @property {?Object[]} successful - An array of succesfully added or updated Zotero item objects
+ * @property {?string[]} unchanged - An array of Zotero item keys of Zotero items which remained unchanged after the POST request either because no changes were sent or the version sent was outdated
+ * @property {?Object[]} failed - An array of Zotero item objects which failed in their attempts to be added or updated, perhaps due to format/syntactical or structural errors
+ */
+
+/**
+ *  Adds or updates one or more items in a Zotero Library depending on whether a given item object is passed with Zotero key and version properties and returns a {@link ZoteroResponse} object from the Zotero API.  Failed items are also written to failed.json for forensic/debugging purposes.
+ *
+ *  @async
+ *  @function postItems
+ *  @requires fs
+ *  @requires axios
+ *  @param {Object[]} items - An array of objects formatted as Zotero items according to the Zotero Web API 3.0 docs
+ *  @returns {ZoteroResponse} An object containing an array of successfully added or updated Zotero item objects, an array of Zotero item keys of unchanged Zotero items, and an array of Zotero item objects of Zotero items which failed to be added or updated
+ *
+ *  @see [Zotero Web API 3.0 › Write Requests › Creating Multiple Objects]{@link https://www.zotero.org/support/dev/web_api/v3/write_requests#creating_multiple_objects}
+ */
+
 const postItems = async (items) => {
   try {
     const response = await zoteroLibrary.post('items', items);
@@ -314,43 +291,23 @@ const postItems = async (items) => {
     const failed = Object.values(response.data.failed);
 
     if (successful.length > 0) {
-      log(
-        chalk.green(
-          `› Successfully posted ${successful.length} item${
-            successful.length > 1 ? 's' : ''
-          }.`
-        )
-      );
+      // prettier-ignore
+      log(chalk.green(`› Successfully posted ${successful.length} item${successful.length === 1 ? '' : 's'}.`));
     }
 
     if (unchanged.length > 0) {
-      log(
-        `› ${unchanged.length} item${
-          unchanged.length > 1 ? 's' : ''
-        } left unchanged.`
-      );
+      // prettier-ignore
+      log(`› ${unchanged.length} item${unchanged.length === 1 ? '' : 's'} left unchanged.`);
     }
 
     if (failed.length > 0) {
-      console.error(
-        chalk.bold.red(
-          `› Failed to post ${failed.length} video${
-            failed.length > 1 ? 's' : ''
-          }.`
-        )
-      );
+      // prettier-ignore
+      console.error(chalk.bold.red(`› Failed to post ${failed.length} video${failed.length === 1 ? '' : 's'}.`));
 
-      fs.writeFile(
-        'failed.json',
-        JSON.stringify(response.data.failed),
-        'utf8',
-        (err) => {
-          if (err)
-            throw new Error(
-              'An error occured while writing JSON Object to File.'
-            );
-        }
-      );
+      // prettier-ignore
+      fs.writeFile('failed.json', JSON.stringify(response.data.failed), 'utf8', (err) => {
+        if (err) throw new Error('An error occured while writing JSON Object to File.');
+      });
     }
 
     return { successful: successful, unchanged: unchanged, failed: failed };
@@ -359,7 +316,20 @@ const postItems = async (items) => {
   }
 };
 
-const formatItems = (video, template) => {
+/**
+ *  Converts raw data for a single video from the ESOVDB into a format that can be accepted by Zotero in a single- or multiple-item write request
+ *
+ *  @async
+ *  @function formatItems
+ *  @requires fs
+ *  @param {Object} video - An object representing a video from the ESOVDB, retrieved from the ESOVDB either through the API or through Airtable's automation feature
+ *  @param {Object} template - A valid Zotero item template, retrieved from Zotero using {@link getTemplate}
+ *  @returns {Object} A properly-formatted and populated object for use in either a single-item or multiple-item Zotero write request
+ *
+ *  @see [Zotero Web API 3.0 › Write Requests › Item Requests]{@link https://www.zotero.org/support/dev/web_api/v3/write_requests#item_requests}
+ */
+
+const formatItems = async (video, template) => {
   let extras = [];
 
   if (video.topic) extras.push({ title: 'Topic', value: video.topic });
@@ -415,15 +385,46 @@ const formatItems = (video, template) => {
     rights: '',
     extra: extras.map((item) => item.title + ': ' + item.value).join('\n'),
     tags: [],
-    collections: collections.get(video.topic)
-      ? [collections.get(video.topic)]
-      : [],
+    collections: topics.get(video.topic) ? [topics.get(video.topic)] : [],
     relations: {},
   };
 
   if (video.zoteroKey && video.zoteroVersion) {
     payload.key = video.zoteroKey;
     payload.version = video.zoteroVersion;
+  }
+
+  if (video.series) {
+    if (video.zoteroSeries) {
+      payload.collections.push(video.zoteroSeries);
+    } else {
+      try {
+        const { data } = await createCollection(video.series, 'series');
+
+        if (data.success && Object.values(data.success).length > 0) {
+          // prettier-ignore
+          log(chalk.green(`› Successfully created collection "${video.series}" under "Series".`));
+          payload.collections.push(data.success[0]);
+          // prettier-ignore
+          const updateSeriesResponse = await updateTable([{ id: video.seriesId, fields: { 'Zotero Collection': data.success[0] } }], 'series');
+
+          if (updateSeriesResponse && updateSeriesResponse.length > 0) {
+            // prettier-ignore
+            log(chalk.bold.green('› Successfully synced series collection key with the ESOVDB.'));
+          } else {
+            // prettier-ignore
+            throw new Error('Failed to sync series collection key with the ESOVDB');
+          }
+        } else {
+          // prettier-ignore
+          const message = data.failed.length > 1 && data.failed[0].message ? data.failed[0].message : '';
+          // prettier-ignore
+          throw new Error(`Failed to create series collection${message ? ' (' + message + ')' : ''}.`);
+        }
+      } catch (err) {
+        console.error(chalk.bold.red(err.message));
+      }
+    }
   }
 
   return payload;
@@ -456,17 +457,10 @@ const formatItems = (video, template) => {
     if (videos && videos.length > 0) {
       if (program.json) {
         try {
-          fs.writeFileSync(
-            'videos.json',
-            JSON.stringify(videos),
-            'utf8',
-            (err) => {
-              if (err)
-                throw new Error(
-                  'An error occured while writing JSON Object to File.'
-                );
-            }
-          );
+          // prettier-ignore
+          fs.writeFileSync('videos.json', JSON.stringify(videos), 'utf8', (err) => {
+              if (err) throw new Error('An error occured while writing JSON Object to File.');
+          });
 
           process.exit();
         } catch (err) {
@@ -476,7 +470,9 @@ const formatItems = (video, template) => {
       }
 
       const template = await getTemplate();
-      let items = videos.map((video) => formatItems(video, template));
+      let items = await queueAsync(
+        videos.map((video) => () => formatItems(video, template))
+      );
 
       let i = 0,
         totalSuccessful = 0,
@@ -487,7 +483,7 @@ const formatItems = (video, template) => {
 
       while (items.length) {
         log(
-          `Posting item${items.length > 1 ? 's' : ''} ${
+          `Posting item${items.length === 1 ? '' : 's'} ${
             i * program.chunkSize + 1
           }${items.length > 1 ? '-' : ''}${
             items.length > 1
@@ -498,50 +494,23 @@ const formatItems = (video, template) => {
               : ''
           } of ${queue} total to Zotero...`
         );
-
-        let { successful, unchanged, failed } = await postItems(
-          items.splice(0, program.chunkSize)
-        );
-
+        // prettier-ignore
+        let { successful, unchanged, failed } = await postItems(items.splice(0, program.chunkSize));
         if (successful.length > 0) posted = [...posted, ...successful];
-
         totalSuccessful += successful.length;
         totalUnchanged += unchanged.length;
         totalFailed += failed.length;
-
         if (items.length > program.chunkSize) await sleep(program.waitSecs);
-
         i++;
       }
 
-      log(chalk.bold('[DONE] Posted to Zotero:'));
-
-      if (totalSuccessful > 0)
-        log(
-          chalk.bold.green(
-            `› [${totalSuccessful}] item${
-              totalSuccessful > 1 ? 's' : ''
-            } total added or updated.`
-          )
-        );
-
-      if (totalUnchanged > 0)
-        log(
-          chalk.bold(
-            `› [${totalUnchanged}] item${
-              totalUnchanged > 1 ? 's' : ''
-            } total left unchanged.`
-          )
-        );
-
-      if (totalFailed > 0)
-        log(
-          chalk.bold.red(
-            `› [${totalUnchanged}] item${
-              totalFailed > 1 ? 's' : ''
-            } total failed to add or update.`
-          )
-        );
+      log(chalk.bold('Zotero response summary:'));
+      // prettier-ignore
+      if (totalSuccessful > 0) log(chalk.bold.green(`› [${totalSuccessful}] item${totalSuccessful === 1 ? '' : 's'} total added or updated.`));
+      // prettier-ignore
+      if (totalUnchanged > 0) log(chalk.bold(`› [${totalUnchanged}] item${totalUnchanged === 1 ? '' : 's'} total left unchanged.`));
+      // prettier-ignore
+      if (totalFailed > 0) log(chalk.bold.red(`› [${totalFailed}] item${totalFailed === 1 ? '' : 's'} total failed to add or update.`));
 
       if (posted.length > 0) {
         const itemsToSync = posted.map((item) => ({
@@ -552,16 +521,11 @@ const formatItems = (video, template) => {
           },
         }));
 
-        const updated = await updateVideos(itemsToSync);
+        const updated = await updateTable(itemsToSync, 'videos');
 
         if (updated && updated.length > 0) {
-          log(
-            chalk.bold.green(
-              `› [${updated.length}] item${
-                updated.length > 1 ? "s'" : "'s"
-              } Zotero key and version synced with the ESOVDB.`
-            )
-          );
+          // prettier-ignore
+          log(chalk.bold.green(`› [${updated.length}] item${updated.length === 1 ? "'s" : "s'"} Zotero key and version synced with the ESOVDB.`));
         } else {
           throw new Error('Error syncing items with the ESOVBD.');
         }
