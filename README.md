@@ -2,7 +2,7 @@
 
 Gets a specified number of records from the ESOVDB (Earth Science Online Video Database), adds them as items in a Zotero library (now publicly available [here](https://www.zotero.org/groups/2764885/esovdb/library)), and then re-syncs the new Zotero version number or newly assigned Zotero keys with the ESOVDB. Since the public ESOVDB Zotero library has topic and series subcollections for each ESOVDB topic and series, this CLI adds videos retrieved from the ESOVDB to their corresponding subcollections in Zotero, or creates a new subcollection if necessary. Uses [avanavana/airtable-api-proxy](https://github.com/avanavana/airtable-api-proxy) as a back-end for communicating with both the Airtable and Zotero APIs.
 
-Visit the [The Earth Science Online Video Database](https://airtable.com/shrFBKQwGjstk7TVn)
+Visit the [The Earth Science Online Video Database](http://www.esovdb.org)
 
 ### Use as CLI
 
