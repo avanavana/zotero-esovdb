@@ -39,7 +39,7 @@ const zotero = axios.create({
 });
 
 const esovdb = axios.create({
-  baseURL: `${process.env.ESOVDB_PROXY_CACHE}/esovdb/`,
+  baseURL: `https://api.esovdb.org/v1/`,
   headers: esovdbHeaders,
 });
 
@@ -161,7 +161,7 @@ const getVideos = async (params) => {
   );
 
   try {
-    const response = await esovdb.get('videos/list', { params: params });
+    const response = await esovdb.get('videos/query', { params: params });
 
     if (response && response.data.length > 0) {
       // prettier-ignore
@@ -253,7 +253,7 @@ const createCollection = async (name, parent) => {
       // prettier-ignore
       log(`No ${parent} collection named "${name}", creating new collection...`);
       // prettier-ignore
-      return await zoteroLibrary.post('collections', [{ name: name, parentCollection: collections.get(parent) }]);
+      return await zoteroLibrary.post('zotero/collections', [{ name: name, parentCollection: collections.get(parent) }]);
     } else {
       throw new Error('Unrecognized subcollection type.');
     }
@@ -310,7 +310,7 @@ const postItems = async (items) => {
       });
     }
 
-    return { successful: successful, unchanged: unchanged, failed: failed };
+    return { successful, unchanged, failed };
   } catch (err) {
     console.error(chalk.bold.red(err.message));
   }
